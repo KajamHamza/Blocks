@@ -54,9 +54,6 @@ To preview the production build:
 npm run preview
 ```
 
-## 🤝 Contributing
-Pull requests are welcome! Please open an issue first to discuss any significant changes.
-
 ## 📜 License
 This project is licensed under the MIT License.
 
