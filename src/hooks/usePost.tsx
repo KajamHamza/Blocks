@@ -5,12 +5,12 @@ import { useWallet } from '@/hooks/useWallet';
 import { useProfile } from '@/hooks/useProfile';
 import { 
   LensPost, 
-  createPost, 
-  getPosts, 
-  likePost, 
-  dislikePost, 
-  bookmarkPost,
-  tipUser 
+  createPost as apiCreatePost, 
+  getPosts as apiGetPosts, 
+  likePost as apiLikePost, 
+  dislikePost as apiDislikePost, 
+  bookmarkPost as apiBookmarkPost,
+  tipUser as apiTipUser 
 } from '@/services/lens-protocol';
 
 interface PostContextType {
@@ -36,27 +36,10 @@ export const PostProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Load posts on mount
   useEffect(() => {
-    const loadPosts = async () => {
-      try {
-        setIsLoading(true);
-        const fetchedPosts = await getPosts();
-        setPosts(fetchedPosts);
-      } catch (err) {
-        console.error('Failed to load posts:', err);
-        setError('Failed to load posts');
-        toast({
-          title: "Error",
-          description: "Failed to load posts. Please try again later.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadPosts();
+    refreshPosts();
   }, []);
 
+  // Create a new post
   const createNewPost = async (content: string, imageUrl?: string): Promise<boolean> => {
     if (!walletInfo) {
       toast({
@@ -87,7 +70,9 @@ export const PostProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     try {
       setIsLoading(true);
-      const newPost = await createPost(content, imageUrl, walletInfo.address);
+      const newPost = await apiCreatePost(content, imageUrl, walletInfo.address);
+      
+      console.log('Created new post with ID:', newPost.id);
       
       // Update local state with the new post
       setPosts(prevPosts => [newPost, ...prevPosts]);
@@ -112,6 +97,7 @@ export const PostProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  // Like a post
   const handleLikePost = async (postId: string): Promise<void> => {
     if (!walletInfo) {
       toast({
@@ -122,8 +108,20 @@ export const PostProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return;
     }
 
+    // Validate postId
+    if (!postId) {
+      console.error('usePost: handleLikePost called with invalid postId:', postId);
+      toast({
+        title: "Error",
+        description: "Invalid post ID",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      const updatedPost = await likePost(postId, walletInfo.address);
+      console.log('usePost: Liking post with ID:', postId);
+      const updatedPost = await apiLikePost(postId, walletInfo.address);
       
       // Update local state with the updated post
       setPosts(prevPosts => 
@@ -146,6 +144,7 @@ export const PostProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  // Dislike a post
   const handleDislikePost = async (postId: string): Promise<void> => {
     if (!walletInfo) {
       toast({
@@ -156,8 +155,20 @@ export const PostProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return;
     }
 
+    // Validate postId
+    if (!postId) {
+      console.error('usePost: handleDislikePost called with invalid postId:', postId);
+      toast({
+        title: "Error",
+        description: "Invalid post ID",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      const updatedPost = await dislikePost(postId, walletInfo.address);
+      console.log('usePost: Disliking post with ID:', postId);
+      const updatedPost = await apiDislikePost(postId, walletInfo.address);
       
       // Update local state with the updated post
       setPosts(prevPosts => 
@@ -180,6 +191,7 @@ export const PostProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  // Bookmark a post
   const handleBookmarkPost = async (postId: string, collectionName: string = 'Favorites'): Promise<void> => {
     if (!walletInfo) {
       toast({
@@ -190,8 +202,20 @@ export const PostProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return;
     }
 
+    // Validate postId
+    if (!postId) {
+      console.error('usePost: handleBookmarkPost called with invalid postId:', postId);
+      toast({
+        title: "Error",
+        description: "Invalid post ID",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      await bookmarkPost(postId, walletInfo.address, collectionName);
+      console.log('usePost: Bookmarking post with ID:', postId);
+      await apiBookmarkPost(postId, walletInfo.address, collectionName);
       
       toast({
         title: "Post Bookmarked",
@@ -207,11 +231,23 @@ export const PostProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  // Tip a user
   const handleTipUser = async (postId: string, amount: number): Promise<void> => {
     if (!walletInfo) {
       toast({
         title: "Not Connected",
         description: "Please connect your wallet to tip users",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate postId
+    if (!postId) {
+      console.error('usePost: handleTipUser called with invalid postId:', postId);
+      toast({
+        title: "Error",
+        description: "Invalid post ID",
         variant: "destructive",
       });
       return;
@@ -227,7 +263,8 @@ export const PostProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     try {
-      await tipUser(postId, walletInfo.address, amount);
+      console.log('usePost: Tipping post with ID:', postId, 'amount:', amount);
+      await apiTipUser(postId, walletInfo.address, amount);
       
       toast({
         title: "Tip Sent",
@@ -243,10 +280,12 @@ export const PostProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  // Refresh posts from the API
   const refreshPosts = async (): Promise<void> => {
     try {
       setIsLoading(true);
-      const fetchedPosts = await getPosts();
+      const fetchedPosts = await apiGetPosts();
+      console.log('usePost: Refreshed posts, count:', fetchedPosts.length);
       setPosts(fetchedPosts);
       setIsLoading(false);
     } catch (err) {
@@ -261,6 +300,7 @@ export const PostProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  // Provide the post context to the app
   return (
     <PostContext.Provider
       value={{
@@ -280,6 +320,7 @@ export const PostProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   );
 };
 
+// Hook to use the post context
 export const usePost = () => {
   const context = useContext(PostContext);
   if (context === undefined) {

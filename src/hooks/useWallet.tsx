@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import { toast } from '@/hooks/use-toast';
 
 // Wallet types supported by the application
@@ -81,62 +82,74 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [walletInfo, setWalletInfo] = useState<WalletInfo | null>(null);
   const [status, setStatus] = useState<WalletStatus>('disconnected');
   const [walletType, setWalletType] = useState<WalletType | null>(null);
+  const initialized = useRef(false);
+
+  // Restore wallet connection from localStorage - extracted as a callback to avoid infinite loops
+  const restoreWalletConnection = useCallback(() => {
+    const storedAuth = localStorage.getItem('blocks_auth');
+    const storedWalletType = localStorage.getItem('blocks_wallet_type') as WalletType | null;
+    const storedWalletInfo = localStorage.getItem('blocks_wallet_info');
+    
+    if (storedAuth && storedWalletType && storedWalletInfo && status === 'disconnected') {
+      setWalletType(storedWalletType);
+      setWalletInfo(JSON.parse(storedWalletInfo));
+      setStatus('connected');
+      
+      // Dispatch a storage event to notify other parts of the app
+      const event = new StorageEvent('storage', {
+        key: 'blocks_wallet_info',
+        newValue: storedWalletInfo
+      });
+      window.dispatchEvent(event);
+    }
+  }, [status]); // Only depends on status to prevent additional re-renders
 
   // Effect to check if a wallet is already connected on load
   useEffect(() => {
-    const restoreWalletConnection = () => {
-      const storedAuth = localStorage.getItem('blocks_auth');
-      const storedWalletType = localStorage.getItem('blocks_wallet_type') as WalletType | null;
-      const storedWalletInfo = localStorage.getItem('blocks_wallet_info');
-      
-      if (storedAuth && storedWalletType && storedWalletInfo) {
-        setWalletType(storedWalletType);
-        setWalletInfo(JSON.parse(storedWalletInfo));
-        setStatus('connected');
-        
-        // Dispatch a storage event to notify other parts of the app
-        const event = new StorageEvent('storage', {
-          key: 'blocks_wallet_info',
-          newValue: storedWalletInfo
-        });
-        window.dispatchEvent(event);
-      }
-    };
-    
-    restoreWalletConnection();
+    // Prevent the effect from running more than once during initialization
+    if (!initialized.current) {
+      initialized.current = true;
+      restoreWalletConnection();
+    }
     
     // Setup event listener for account changes in MetaMask
     if (window.ethereum && typeof window.ethereum !== 'undefined') {
-      // Check if ethereum.on is a function before using it
-      if (typeof window.ethereum.request === 'function') {
-        // Since ethereum.on is not reliable in our type definition, we'll use a workaround
-        // We'll check for account changes by polling
-        const pollAccounts = setInterval(async () => {
-          try {
-            if (typeof window.ethereum.request === 'function') {
-              const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-              const currentAddress = walletInfo?.address?.toLowerCase();
-              
-              // If we have a wallet connected but accounts are empty, disconnect
-              if (currentAddress && (!accounts || accounts.length === 0)) {
-                console.log('Wallet disconnected externally');
-                disconnect();
-              }
-              // If account changed, update the connection
-              else if (accounts && accounts.length > 0 && currentAddress && accounts[0].toLowerCase() !== currentAddress) {
-                console.log('Account changed:', accounts[0]);
-                restoreWalletConnection();
-              }
+      // Since ethereum.on is not reliable in our type definition, we'll use a workaround
+      // We'll check for account changes by polling
+      const pollAccounts = setInterval(async () => {
+        try {
+          if (typeof window.ethereum.request === 'function') {
+            const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+            const currentAddress = walletInfo?.address?.toLowerCase();
+            
+            // If we have a wallet connected but accounts are empty, disconnect
+            if (currentAddress && (!accounts || accounts.length === 0)) {
+              console.log('Wallet disconnected externally');
+              disconnect();
             }
-          } catch (err) {
-            console.error('Error polling accounts:', err);
+            // If account changed, update the connection
+            else if (accounts && accounts.length > 0 && currentAddress && accounts[0].toLowerCase() !== currentAddress) {
+              console.log('Account changed:', accounts[0]);
+              // Update the wallet info without calling restoreWalletConnection to prevent infinite loops
+              const updatedWalletInfo = {
+                ...walletInfo,
+                address: accounts[0]
+              };
+              setWalletInfo(updatedWalletInfo);
+              
+              // Update localStorage with new address
+              localStorage.setItem('blocks_wallet_info', JSON.stringify(updatedWalletInfo));
+            }
           }
-        }, 3000); // Poll every 3 seconds
-        
-        return () => clearInterval(pollAccounts);
-      }
+        } catch (err) {
+          console.error('Error polling accounts:', err);
+        }
+      }, 3000); // Poll every 3 seconds
+      
+      return () => clearInterval(pollAccounts);
     }
-  }, [walletInfo]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [walletInfo?.address]); // Only depend on the address to prevent full re-renders
 
   // Connect to a wallet
   const connect = async (type: WalletType): Promise<boolean> => {

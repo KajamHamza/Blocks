@@ -1,20 +1,27 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import PostCard, { AwardType } from './post-card';
+import PostCard from './post-card';
 import { cn } from '@/lib/utils';
 import PostCreation from './post-creation';
 import { usePost } from '@/hooks/usePost';
 import { useProfile } from '@/hooks/useProfile';
 import { Loader2 } from 'lucide-react';
+import { AwardType } from '@/types/post';
 
 interface FeedProps {
   className?: string;
 }
 
 const Feed: React.FC<FeedProps> = ({ className }) => {
-  const { posts, isLoading } = usePost();
+  const { posts, isLoading, refreshPosts } = usePost();
   const { currentProfile } = useProfile();
+  
+  // Refresh posts when the component mounts
+  useEffect(() => {
+    console.log('Feed: Refreshing posts on mount');
+    refreshPosts();
+  }, []);
   
   // Mock data for posts (will be replaced with actual posts from Lens Protocol)
   const mockPosts = [
@@ -31,6 +38,7 @@ const Feed: React.FC<FeedProps> = ({ className }) => {
       userCreditRating: 4.20,
       award: 'gold' as AwardType,
       liked: true,
+      postId: '1'
     },
     {
       id: '2',
@@ -45,6 +53,7 @@ const Feed: React.FC<FeedProps> = ({ className }) => {
       reposts: 15,
       userCreditRating: 0.69,
       award: 'silver' as AwardType,
+      postId: '2'
     },
     {
       id: '3',
@@ -58,6 +67,7 @@ const Feed: React.FC<FeedProps> = ({ className }) => {
       reposts: 31,
       userCreditRating: 0.91,
       award: 'platinum' as AwardType,
+      postId: '3'
     },
     {
       id: '4',
@@ -71,6 +81,7 @@ const Feed: React.FC<FeedProps> = ({ className }) => {
       reposts: 3,
       userCreditRating: 0.01,
       award: null,
+      postId: '4'
     },
     {
       id: '5',
@@ -86,6 +97,7 @@ const Feed: React.FC<FeedProps> = ({ className }) => {
       userCreditRating: 2.15,
       award: 'diamond' as AwardType,
       liked: true,
+      postId: '5'
     },
   ];
 
@@ -93,21 +105,13 @@ const Feed: React.FC<FeedProps> = ({ className }) => {
   const convertLensPosts = () => {
     if (!posts.length) return [];
     
+    console.log('Feed: Converting Lens posts to PostCard format, count:', posts.length);
+    
     return posts.map(post => {
       // In a real app, you would get this data from the Lens Protocol API
       return {
-        id: post.id,
-        username: currentProfile?.username || 'Anonymous',
-        handle: currentProfile?.username?.toLowerCase() || 'anon',
-        avatarUrl: currentProfile?.profilePicture || '',
-        content: post.content,
-        imageUrl: post.imageUrl,
-        timestamp: formatTimestamp(post.createdAt),
-        likes: 0,
-        comments: 0,
-        reposts: 0,
-        userCreditRating: 0,
-        award: null as AwardType,
+        post,
+        key: post.id // Ensure each post has a unique key for React
       };
     });
   };
@@ -130,8 +134,13 @@ const Feed: React.FC<FeedProps> = ({ className }) => {
     return `${days}d`;
   };
 
-  // Combine real posts with mock posts
-  const allPosts = [...convertLensPosts(), ...mockPosts];
+  // Convert Lens posts for rendering
+  const lensPostElements = convertLensPosts().map(({ post, key }) => (
+    <PostCard key={key} post={post} />
+  ));
+
+  // Debug output
+  console.log('Feed: Rendering feed with lens posts:', lensPostElements.length);
 
   return (
     <div className={cn("flex flex-col h-full border-x border-gray-800/30 scrollbar-hide", className)}>
@@ -171,8 +180,11 @@ const Feed: React.FC<FeedProps> = ({ className }) => {
             </div>
           )}
           
-          {/* Posts */}
-          {allPosts.map((post) => (
+          {/* Lens Protocol Posts */}
+          {lensPostElements}
+          
+          {/* Mock Posts - only show these if there are no real posts */}
+          {!isLoading && lensPostElements.length === 0 && mockPosts.map((post) => (
             <PostCard key={post.id} {...post} />
           ))}
         </TabsContent>
