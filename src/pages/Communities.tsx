@@ -1,95 +1,186 @@
 
 import React from 'react';
-import MainLayout from '@/components/main-layout';
-import { Card } from '@/components/ui/card';
+import MainLayout from '@/components/layout/MainLayout';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Users, Bookmark, TrendingUp, Star } from 'lucide-react';
+import { Search, TrendingUp, Plus, Users } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+// Mock data for communities
+const mockCommunities = [
+  {
+    id: '1',
+    name: 'Investing',
+    prefix: 'sb/investing',
+    description: 'Discussions about crypto investing, DeFi, and trading strategies.',
+    members: 12500,
+    posts: 1450,
+    joined: true,
+    trending: true
+  },
+  {
+    id: '2',
+    name: 'DeFi',
+    prefix: 'sb/defi',
+    description: 'Everything about decentralized finance protocols and yield farming.',
+    members: 8720,
+    posts: 980,
+    joined: false,
+    trending: true
+  },
+  {
+    id: '3',
+    name: 'NFT Creators',
+    prefix: 'sb/nft-creators',
+    description: 'For artists and collectors in the NFT space to share their work and insights.',
+    members: 6340,
+    posts: 780,
+    joined: true,
+    trending: false
+  },
+  {
+    id: '4',
+    name: 'Web3 Developers',
+    prefix: 'sb/web3-dev',
+    description: 'Technical discussions about blockchain development, smart contracts, and dApps.',
+    members: 9100,
+    posts: 1230,
+    joined: false,
+    trending: true
+  },
+  {
+    id: '5',
+    name: 'Governance',
+    prefix: 'sb/governance',
+    description: 'Discussions about DAOs, protocol governance, and voting systems.',
+    members: 5200,
+    posts: 620,
+    joined: false,
+    trending: false
+  },
+  {
+    id: '6',
+    name: 'Memes',
+    prefix: 'sb/memes',
+    description: 'The best crypto and Web3 memes on the blockchain.',
+    members: 15800,
+    posts: 2300,
+    joined: true,
+    trending: true
+  }
+];
 
 const Communities = () => {
-  const popularCommunities = [
-    { name: 'Ethereum Devs', members: '42.5K', description: 'Community for Ethereum developers and enthusiasts', category: 'Development' },
-    { name: 'NFT Marketplace', members: '36.2K', description: 'Discover, collect, and sell extraordinary NFTs', category: 'Art & Collectibles' },
-    { name: 'DeFi Discussions', members: '28.9K', description: 'Everything about decentralized finance', category: 'Finance' },
-    { name: 'Meme Economy', members: '19.3K', description: 'The best crypto and blockchain memes', category: 'Humor' },
-    { name: 'Polygon Network', members: '15.7K', description: 'Official community for Polygon users and developers', category: 'Blockchain' },
-  ];
-
   return (
     <MainLayout>
-      <div className="max-w-4xl mx-auto w-full p-4 md:p-6">
-        <div className="mb-8">
-          <h1 className="text-3xl font-display font-bold text-white">Communities</h1>
-          <p className="text-gray-400 mt-2">Discover and join communities of people with similar interests</p>
+      <div className="max-w-5xl mx-auto p-4">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold">Communities</h1>
+          <Button className="bg-blocks-accent hover:bg-blocks-accent/90">
+            <Plus className="mr-2 h-4 w-4" />
+            Create Community
+          </Button>
         </div>
         
-        {/* Search */}
-        <div className="relative mb-8">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search size={18} className="text-gray-500" />
-          </div>
-          <Input
-            type="text"
-            placeholder="Search communities"
-            className="pl-10 py-6 bg-gray-800/80 border-gray-700 text-white rounded-xl w-full"
+        <div className="relative mb-6">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input 
+            placeholder="Search communities" 
+            className="pl-10 bg-white/5 border-white/10"
           />
         </div>
         
-        {/* Categories */}
-        <div className="mb-8">
-          <h2 className="text-xl font-display font-semibold text-white mb-4">Categories</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Button variant="outline" className="bg-gray-800/80 border-gray-700 hover:bg-gray-700 text-white h-auto py-4 justify-start gap-3">
-              <TrendingUp size={18} className="text-blocks-primary" />
-              <span>Trending</span>
-            </Button>
-            <Button variant="outline" className="bg-gray-800/80 border-gray-700 hover:bg-gray-700 text-white h-auto py-4 justify-start gap-3">
-              <Star size={18} className="text-yellow-500" />
-              <span>Featured</span>
-            </Button>
-            <Button variant="outline" className="bg-gray-800/80 border-gray-700 hover:bg-gray-700 text-white h-auto py-4 justify-start gap-3">
-              <Users size={18} className="text-green-500" />
-              <span>Your Communities</span>
-            </Button>
-            <Button variant="outline" className="bg-gray-800/80 border-gray-700 hover:bg-gray-700 text-white h-auto py-4 justify-start gap-3">
-              <Bookmark size={18} className="text-purple-500" />
-              <span>Saved</span>
-            </Button>
-          </div>
-        </div>
-        
-        {/* Popular Communities */}
-        <div>
-          <h2 className="text-xl font-display font-semibold text-white mb-4">Popular Communities</h2>
-          <div className="space-y-4">
-            {popularCommunities.map((community, index) => (
-              <Card key={index} className="bg-gray-800/80 border-gray-700 hover:bg-gray-700/80 transition-colors p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start space-x-4">
-                    <div className="w-12 h-12 rounded-full bg-blocks-primary/20 flex items-center justify-center">
-                      <span className="text-blocks-primary text-lg font-bold">
-                        {community.name.charAt(0)}
-                      </span>
-                    </div>
-                    <div>
-                      <h3 className="text-white font-medium">sb/{community.name}</h3>
-                      <p className="text-gray-400 text-sm mt-1">{community.members} members</p>
-                      <p className="text-gray-300 text-sm mt-2">{community.description}</p>
-                    </div>
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    className="border-blocks-primary text-blocks-primary hover:bg-blocks-primary hover:text-white"
-                  >
-                    Join
-                  </Button>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
+        <Tabs defaultValue="discover">
+          <TabsList className="mb-6">
+            <TabsTrigger value="discover">Discover</TabsTrigger>
+            <TabsTrigger value="joined">Joined</TabsTrigger>
+            <TabsTrigger value="trending">Trending</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="discover">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {mockCommunities.map(community => (
+                <CommunityCard key={community.id} community={community} />
+              ))}
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="joined">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {mockCommunities
+                .filter(c => c.joined)
+                .map(community => (
+                  <CommunityCard key={community.id} community={community} />
+                ))}
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="trending">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {mockCommunities
+                .filter(c => c.trending)
+                .map(community => (
+                  <CommunityCard key={community.id} community={community} />
+                ))}
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </MainLayout>
+  );
+};
+
+interface CommunityCardProps {
+  community: {
+    id: string;
+    name: string;
+    prefix: string;
+    description: string;
+    members: number;
+    posts: number;
+    joined: boolean;
+    trending: boolean;
+  };
+}
+
+const CommunityCard = ({ community }: CommunityCardProps) => {
+  return (
+    <Card className="bg-blocks-card border-white/10 overflow-hidden">
+      <CardHeader>
+        <div className="flex justify-between items-center">
+          <div>
+            <CardTitle className="text-lg">{community.name}</CardTitle>
+            <CardDescription className="text-muted-foreground">{community.prefix}</CardDescription>
+          </div>
+          {community.trending && (
+            <div className="bg-blocks-accent/20 text-blocks-accent p-1.5 rounded-full">
+              <TrendingUp className="h-4 w-4" />
+            </div>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-muted-foreground mb-4">{community.description}</p>
+        <div className="flex items-center gap-4 text-sm">
+          <div className="flex items-center gap-1">
+            <Users className="h-4 w-4 text-muted-foreground" />
+            <span>{community.members.toLocaleString()} members</span>
+          </div>
+          <div className="text-muted-foreground">
+            {community.posts.toLocaleString()} posts
+          </div>
+        </div>
+      </CardContent>
+      <CardFooter>
+        <Button 
+          variant={community.joined ? "outline" : "default"} 
+          className={`w-full ${community.joined ? 'border-white/20' : 'bg-blocks-accent hover:bg-blocks-accent/90'}`}
+        >
+          {community.joined ? 'Joined' : 'Join'}
+        </Button>
+      </CardFooter>
+    </Card>
   );
 };
 

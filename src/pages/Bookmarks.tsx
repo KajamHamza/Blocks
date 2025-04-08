@@ -1,104 +1,76 @@
 
-import React, { useState, useEffect } from 'react';
-import MainLayout from '@/components/main-layout';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Bookmark, Search } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { useWallet } from '@/hooks/useWallet';
-import { LensPost } from '@/services/lens-protocol';
-import PostCard from '@/components/post-card';
+import React from 'react';
+import { Bookmark } from 'lucide-react';
+import MainLayout from '@/components/layout/MainLayout';
+import PostCard from '@/components/post/PostCard';
+
+const mockBookmarkedPosts = [
+  {
+    id: '1',
+    author: {
+      username: 'vitalik',
+      displayName: 'Vitalik.eth',
+      avatar: 'https://pbs.twimg.com/profile_images/977496875887558661/L86xyLF4_400x400.jpg'
+    },
+    content: "Just published a new paper on scalability solutions for L2. Check it out!",
+    timestamp: '2023-04-05T14:48:00.000Z',
+    likes: 532,
+    comments: 89,
+    mirrors: 124,
+    hasMirror: false,
+    hasLiked: false,
+    rating: 'gold' as const,
+    bookmarked: true
+  },
+  {
+    id: '3',
+    author: {
+      username: 'blocksuser',
+      displayName: 'Blocks Official',
+      avatar: undefined
+    },
+    content: 'Welcome to Blocks! The decentralized social platform where your content truly belongs to you. Start posting and earning BLKS tokens today!',
+    timestamp: '2023-04-03T12:15:00.000Z',
+    likes: 892,
+    comments: 145,
+    mirrors: 267,
+    hasMirror: false,
+    hasLiked: true,
+    rating: 'diamond' as const,
+    bookmarked: true,
+    images: [
+      'https://images.unsplash.com/photo-1639322537228-f710d846310a?q=80&w=1000',
+      'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?q=80&w=1000'
+    ]
+  }
+];
 
 const Bookmarks = () => {
-  const { walletInfo } = useWallet();
-  const [bookmarks, setBookmarks] = useState<LensPost[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [collections, setCollections] = useState<string[]>(['Favorites', 'Read Later', 'Inspirations']);
-  const [activeCollection, setActiveCollection] = useState('all');
-
-  // In a production app, this would fetch from Lens Protocol or a dedicated bookmark service
-  useEffect(() => {
-    if (walletInfo?.address) {
-      // Simulate loading bookmarks from storage
-      const loadBookmarks = () => {
-        const storedBookmarks = localStorage.getItem(`bookmarks_${walletInfo.address}`);
-        if (storedBookmarks) {
-          setBookmarks(JSON.parse(storedBookmarks));
-        }
-      };
-      
-      loadBookmarks();
-    }
-  }, [walletInfo]);
-
-  // Filter bookmarks based on search and active collection
-  const filteredBookmarks = bookmarks.filter(bookmark => {
-    const matchesSearch = bookmark.content.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCollection = activeCollection === 'all' || bookmark.collection === activeCollection;
-    return matchesSearch && matchesCollection;
-  });
-
   return (
     <MainLayout>
-      <div className="max-w-2xl mx-auto w-full px-4 py-6">
-        <h1 className="text-2xl font-bold mb-6">Bookmarks</h1>
-        
-        <div className="relative mb-6">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" size={18} />
-          <Input
-            placeholder="Search bookmarks..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 bg-gray-800/50 border-gray-700"
-          />
+      <div className="max-w-2xl mx-auto">
+        <div className="sticky top-0 z-10 backdrop-blur-md bg-blocks-background/70 border-b border-white/10 px-4">
+          <div className="flex items-center gap-3 py-4">
+            <h1 className="text-xl font-bold">Bookmarks</h1>
+            <Bookmark className="h-5 w-5 text-blocks-accent" />
+          </div>
         </div>
         
-        <Tabs defaultValue="all" className="w-full" onValueChange={setActiveCollection}>
-          <TabsList className="mb-6 bg-gray-800/50 flex overflow-x-auto scrollbar-hide">
-            <TabsTrigger value="all" className="flex-shrink-0">All Bookmarks</TabsTrigger>
-            {collections.map(collection => (
-              <TabsTrigger key={collection} value={collection} className="flex-shrink-0">
-                {collection}
-              </TabsTrigger>
+        {mockBookmarkedPosts.length > 0 ? (
+          <div>
+            {mockBookmarkedPosts.map(post => (
+              <PostCard key={post.id} post={post} />
             ))}
-            <Button variant="ghost" className="text-xs text-blocks-primary" onClick={() => setCollections([...collections, `Collection ${collections.length + 1}`])}>
-              + New
-            </Button>
-          </TabsList>
-          
-          <TabsContent value="all">
-            {bookmarks.length > 0 ? (
-              <div className="space-y-4">
-                {filteredBookmarks.map(bookmark => (
-                  <PostCard key={bookmark.id} post={bookmark} />
-                ))}
-                
-                {filteredBookmarks.length === 0 && searchQuery && (
-                  <div className="text-center p-8 text-gray-400">
-                    No bookmarks match your search.
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="text-center p-8 text-gray-400">
-                <Bookmark size={48} className="mx-auto mb-4 opacity-50" />
-                <p className="mb-2">You haven't saved any posts yet.</p>
-                <p className="text-sm mb-4">When you bookmark a post, it will appear here.</p>
-                <Button>Explore Content</Button>
-              </div>
-            )}
-          </TabsContent>
-          
-          {collections.map(collection => (
-            <TabsContent key={collection} value={collection}>
-              <div className="text-center p-8 text-gray-400">
-                <Bookmark size={48} className="mx-auto mb-4 opacity-50" />
-                <p>No bookmarks in "{collection}" yet.</p>
-                <p className="text-sm mt-2">Save posts to this collection to see them here.</p>
-              </div>
-            </TabsContent>
-          ))}
-        </Tabs>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center p-8 text-center">
+            <Bookmark className="h-10 w-10 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium mb-2">No bookmarks yet</h3>
+            <p className="text-muted-foreground max-w-xs">
+              When you bookmark posts, they will appear here for you to read later.
+            </p>
+          </div>
+        )}
       </div>
     </MainLayout>
   );
