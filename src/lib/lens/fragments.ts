@@ -12,6 +12,11 @@ export const AccountFragment = graphql(`
       name
       bio
       picture
+      coverPicture
+      attributes {
+        key
+        value
+      }
     }
   }
 `);

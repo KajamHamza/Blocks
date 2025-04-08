@@ -20,6 +20,7 @@ import { uri, never } from '@lens-protocol/client';
 import { createWalletClient, custom } from 'viem';
 import { polygon, polygonAmoy } from 'viem/chains';
 import { chains } from '@lens-chain/sdk/viem';
+import { gql } from '@apollo/client';
 
 interface WalletState {
   address: string | null;
@@ -85,11 +86,14 @@ export const WalletConnectionProvider = ({ children }: { children: ReactNode }) 
     try {
       console.log('Loading user profiles for address:', walletAddress);
       
-      // Check if we have a created Lens account address saved
-      const savedLensAccountAddress = sessionStorage.getItem('createdLensAccountAddress');
-      if (savedLensAccountAddress) {
+      // Check if we have a created Lens account info saved
+      const savedLensAccountInfo = sessionStorage.getItem('createdLensAccountInfo');
+      let savedLensAccountAddress = null;
+      
+      if (savedLensAccountInfo) {
+        const parsedInfo = JSON.parse(savedLensAccountInfo);
+        savedLensAccountAddress = parsedInfo.address;
         console.log('Found created Lens account address:', savedLensAccountAddress);
-        // Consider using this address instead
       }
       
       const sessionClient = await getSessionClient();
@@ -98,39 +102,76 @@ export const WalletConnectionProvider = ({ children }: { children: ReactNode }) 
         return null;
       }
       
-      console.log('Session client obtained, fetching account...');
-      
       // First try with the saved Lens account address if available
       if (savedLensAccountAddress) {
         console.log('Trying to fetch profile with saved Lens account address...');
-        const savedResult = await fetchAccount(sessionClient, {
-          address: savedLensAccountAddress,
-        });
+        try {
+          const savedResult = await fetchAccount(sessionClient, {
+            address: savedLensAccountAddress,
+          });
+          
+          if (savedResult.isOk()) {
+            console.log('Profile found with saved Lens account address:', savedResult.value);
+            const activeProfile = savedResult.value;
+            setLensProfile(activeProfile);
+            setIsAuthenticated(true);
+            return activeProfile;
+          }
+        } catch (error) {
+          console.error('Failed to fetch with saved address:', error);
+        }
+      }
+      
+      // If saved address didn't work, try querying for profiles owned by wallet
+      try {
+        console.log('Querying for profiles owned by wallet:', walletAddress);
+        // Use Lens API to find profiles owned by this wallet
+        const profiles = await fetchProfilesByOwner(sessionClient, walletAddress);
         
-        if (savedResult.isOk()) {
-          console.log('Profile found with saved Lens account address:', savedResult.value);
-          const activeProfile = savedResult.value;
+        if (profiles && profiles.length > 0) {
+          console.log('Found profiles owned by wallet:', profiles);
+          // Use the first profile (or you could let user select if multiple)
+          const profileAddress = profiles[0].id;
+          
+          // Save this for future use
+          const profileInfo = {
+            address: profileAddress,
+            username: profiles[0].handle || ''
+          };
+          sessionStorage.setItem('createdLensAccountInfo', JSON.stringify(profileInfo));
+          
+          // Now fetch the full profile with the correct address
+          const result = await fetchAccount(sessionClient, {
+            address: profileAddress,
+          });
+          
+          if (result.isOk()) {
+            const activeProfile = result.value;
+            setLensProfile(activeProfile);
+            setIsAuthenticated(true);
+            return activeProfile;
+          }
+        }
+      } catch (profileQueryError) {
+        console.error('Failed to query profiles by owner:', profileQueryError);
+      }
+      
+      // As a last resort, try with the wallet address directly
+      try {
+        const result = await fetchAccount(sessionClient, {
+          address: walletAddress,
+        });
+  
+        if (result.isOk()) {
+          console.log('Profile found with wallet address:', result.value);
+          const activeProfile = result.value;
           setLensProfile(activeProfile);
           setIsAuthenticated(true);
           return activeProfile;
         }
+      } catch (directFetchError) {
+        console.error('Failed to fetch with wallet address:', directFetchError);
       }
-      
-      // Try with the wallet address as fallback
-      const result = await fetchAccount(sessionClient, {
-        address: walletAddress,
-      });
-
-      if (result.isOk()) {
-        console.log('Profile found:', result.value);
-        const activeProfile = result.value;
-        setLensProfile(activeProfile);
-        setIsAuthenticated(true);
-        return activeProfile;
-      } 
-      
-      // If no direct match, try by txHash (for newly created profiles)
-      console.log('No profile found by address, trying alternative methods...');
       
       // If we still don't have a profile, report failure
       console.log('No profile found for address:', walletAddress);
@@ -140,6 +181,34 @@ export const WalletConnectionProvider = ({ children }: { children: ReactNode }) 
       return null;
     }
   };
+  
+  // Helper function to query profiles owned by a wallet address
+  async function fetchProfilesByOwner(sessionClient, walletAddress) {
+    try {
+      const { data } = await sessionClient.query({
+        query: gql`
+          query ProfilesOwnedBy($address: EthereumAddress!) {
+            profilesManaged(request: { for: $address }) {
+              items {
+                id
+                handle
+                ownedBy
+                metadata
+              }
+            }
+          }
+        `,
+        variables: {
+          address: walletAddress
+        }
+      });
+      
+      return data.profilesManaged.items;
+    } catch (error) {
+      console.error('Error fetching profiles by owner:', error);
+      return [];
+    }
+  }
 
   const authenticateWithLens = async (address: string): Promise<boolean> => {
     try {
